@@ -27,6 +27,11 @@ if [ "$debug" = "1" ]; then
   RSYNC_DEBUG_ARGS="-v"
 fi
 
+if [ "$debug" != 1 ]; then
+  $BUNDLER_DEBUG_ARGS="> /dev/null 2>&1"
+  $LIBRARIAN_DEBUG_ARGS="> /dev/null 2>&1"
+fi
+
 if [ "$nocolor" = "1" ]; then
   PUPPET_COLOR_ARGS="--color=false"
 fi
@@ -51,12 +56,12 @@ if [ "$cache_libraries" = "1" ]; then
     echo $CURRENT_SHA > .bundler
   fi
 else
-  bundle install --path vendor/bundle $BUNDLER_ARGS
+  bundle install --path vendor/bundle $BUNDLER_ARGS $BUNDLER_DEBUG_ARGS
 fi
 
 # Deploy Environments from upstream
 if [ "$generate_all_environments" != "0" ]; then
-  bundle exec rake environments:update
+  bundle exec rake environments:update $LIBRARIAN_DEBUG_ARGS
 fi
 
 # Bootstrap Modules for current_working_directory
@@ -71,11 +76,11 @@ if [ "$cache_libraries" = "1" ]; then
   OLD_SHA=$(cat .puppetfile)
   CURRENT_SHA=$(git hash-object Puppetfile)
   if [ "$OLD_SHA" != "$CURRENT_SHA" ]; then
-    bundle exec librarian-puppet install --path shared
+    bundle exec librarian-puppet install --path shared $LIBRARIAN_DEBUG_ARGS
     echo $CURRENT_SHA > .puppetfile
   fi
 else
-  bundle exec librarian-puppet install --path shared
+  bundle exec librarian-puppet install --path shared $LIBRARIAN_DEBUG_ARGS
 fi
 
 # Make sure the current working directory is an environment too!
