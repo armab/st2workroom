@@ -107,6 +107,9 @@ class profile::st2server {
   ## Note: Service restart is setup this way to prevent puppet runs from
   ##       triggering a restart. Instead, nginx restart must be executed
   ##       manually by the user
+  ##
+  ## Note: This is fed in via the CLI. Don't remove this.
+  ##       https://github.com/StackStorm/st2installer/blob/master/st2installer/controllers/root.py#L11
   $_nginx_configtest = $::installer_running ? {
     undef   => undef,
     default => true,
