@@ -1,3 +1,7 @@
+# Class: profile::st2server
+#
+# Main config for StackStorm AIO
+#
 class profile::st2server {
   ### Profile Data Collection
   ### Each of these values are values that can be set via Hiera
@@ -14,11 +18,14 @@ class profile::st2server {
   $_installer_workroom_mode = hiera('st2::installer_workroom_mode', '0660')
   $_st2auth_uwsgi_threads = hiera('st2::auth_uwsgi_threads', 10)
   $_st2auth_uwsgi_processes = hiera('st2::auth_uwsgi_processes', 1)
+  $_st2auth_uwsgi_async_cores = hiera('st2::st2auth_uwsgi_async_cores', 10)
   $_st2api_uwsgi_threads = hiera('st2::api_uwsgi_threads', 10)
   $_st2api_uwsgi_processes = hiera('st2::api_uwsgi_processes', 1)
+  $_st2api_uwsgi_async_cores = hiera('st2::st2api_uwsgi_async_cores', 10)
   $_st2installer_branch = hiera('st2::installer_branch', 'stable')
   $_mistral_uwsgi_threads = hiera('st2::mistral_uwsgi_threads', 25)
   $_mistral_uwsgi_processes = hiera('st2::mistral_uwsgi_processes', 1)
+  $_mistral_uwsgi_async_cores = hiera('st2::mistral_uwsgi_async_cores', 10)
   $_installer_lockdown = hiera('st2::installer::lockdown', false)
   $_installer_username = hiera('st2::installer::username', 'installer')
   $_installer_password = hiera('st2::installer::password', fqdn_rand_string(32))
@@ -464,6 +471,7 @@ class profile::st2server {
       'socket'       => $_mistral_socket,
       'processes'    => $_mistral_uwsgi_processes,
       'threads'      => $_mistral_uwsgi_threads,
+      'async'        => $_mistral_uwsgi_async_cores,
       'home'         => "${_mistral_root}/.venv/",
       'wsgi-file'    => "${_mistral_root}/mistral/api/wsgi.py",
       'vacuum'       => true,
@@ -540,12 +548,13 @@ class profile::st2server {
       'socket'       => $_st2api_socket,
       'processes'    => $_st2api_uwsgi_processes,
       'threads'      => $_st2api_uwsgi_threads,
+      'async'        => $_st2api_uwsgi_async_cores,
       'wsgi-file'    => "${_python_pack}/st2api/wsgi.py",
       'vacuum'       => true,
       'logto'        => '/var/log/st2/st2api.uwsgi.log',
       'chmod-socket' => '644',
     },
-    notify             => Service['st2api'],
+    notify              => Service['st2api'],
   }
 
   nginx::resource::vhost { 'st2api':
@@ -562,8 +571,8 @@ class profile::st2server {
     location_raw_prepend => [
       $_cors_custom_options,
     ],
-    location_raw_append => [
-      "proxy_set_header Connection '';",
+    location_raw_append  => [
+      'proxy_set_header Connection \'\';',
       'proxy_http_version 1.1;',
       'chunked_transfer_encoding off;',
       'proxy_buffering off;',
@@ -578,9 +587,9 @@ class profile::st2server {
   # ### Let's at least try to do this safely and consistently
 
   $_st2auth_custom_options = 'limit_except OPTIONS {
-			auth_pam "Restricted";
+      auth_pam "Restricted";
       auth_pam_service_name "nginx";
-		}'
+  }'
 
   # Let's add our nginx user to the `shadow` group, but do
   # it after the package manager has installed and setup
@@ -610,6 +619,7 @@ class profile::st2server {
       'socket'       => $_st2auth_socket,
       'processes'    => $_st2auth_uwsgi_processes,
       'threads'      => $_st2auth_uwsgi_threads,
+      'async'        => $_st2auth_uwsgi_async_cores,
       'wsgi-file'    => "${_python_pack}/st2auth/wsgi.py",
       'vacuum'       => true,
       'logto'        => '/var/log/st2/st2auth.uwsgi.log',
