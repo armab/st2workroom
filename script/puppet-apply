@@ -27,6 +27,9 @@ if [ -n "$NO_COLOR" ]; then
     PUPPET_COLOR_ARGS="--color=false"
 fi
 
+## Run any pre-flight commands
+$PROJECT_ROOT/script/preflight-os
+
 ## Step 1: Update from upstream
 # Do not attempt to upload from upstream git
 if [ -z "$DISABLE_GIT" ]; then
@@ -57,8 +60,6 @@ if [ ! -d $PROJECT_ROOT/environments/$PUPPET_ENV ]; then
     PUPPET_ENV='production'
 fi
 
-## Run any pre-flight commands
-$PROJECT_ROOT/script/preflight-os
 
 # Set the environment. This should be done *after* librarian-puppet
 ## has done its thing to determine if it is needed to switch back
