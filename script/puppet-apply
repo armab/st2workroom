@@ -27,9 +27,34 @@ if [ -n "$NO_COLOR" ]; then
     PUPPET_COLOR_ARGS="--color=false"
 fi
 
+## Step 1: Update from upstream
 # Do not attempt to upload from upstream git
 if [ -z "$DISABLE_GIT" ]; then
     git pull origin -q $GIT_DEBUG_ARGS
+fi
+
+## Step 2: Get the Puppet Environments setup
+# Setup Puppet environments
+if [ "$PUPPET_ENV" = "current_working_directory" ]; then
+    # Make sure the current working directory is an environment too!
+    # This is sort of a hack to support environments while developing
+    # on the currently active branch in Vagrant or other environments
+    echo "Setting up 'current_working_directory'..."
+    rsync $RSYNC_DEBUG_ARGS -arh --delete --exclude "environments" \
+          --exclude "vendor" --exclude "artifacts" --exclude "graphs" \
+          --exclude "packer" --exclude "script" --exclude ".git" \
+          $PROJECT_ROOT/ $PROJECT_ROOT/environments/current_working_directory/
+else
+    rake environments:update
+fi
+
+## Attempt to detect if the environment even exists... if not,
+## roll back to the production environment.
+### Make sure our environment conforms to Puppet environment naming
+PUPPET_ENV=$(echo $PUPPET_ENV | sed 's/[-\/]/_/g')
+if [ ! -d $PROJECT_ROOT/environments/$PUPPET_ENV ]; then
+    echo "The environment $PUPPET_ENV does not exist... falling back to production"
+    PUPPET_ENV='production'
 fi
 
 ## Run any pre-flight commands
@@ -52,29 +77,6 @@ if [ -z "$ENV" ]; then
 else
     PUPPET_ENV=$ENV
 fi
-## Attempt to detect if the environment even exists... if not,
-## roll back to the production environment.
-### Make sure our environment conforms to Puppet environment naming
-PUPPET_ENV=$(echo $PUPPET_ENV | sed 's/[-\/]/_/g')
-if [ ! -d $PROJECT_ROOT/environments/$PUPPET_ENV ]; then
-    echo "The environment $PUPPET_ENV does not exist... falling back to production"
-    PUPPET_ENV='production'
-fi
-
-# Setup Puppet environments
-if [ "$PUPPET_ENV" = "current_working_directory" ]; then
-    # Make sure the current working directory is an environment too!
-    # This is sort of a hack to support environments while developing
-    # on the currently active branch in Vagrant or other environments
-    echo "Setting up 'current_working_directory'..."
-    rsync $RSYNC_DEBUG_ARGS -arh --delete --exclude "environments" \
-          --exclude "vendor" --exclude "artifacts" --exclude "graphs" \
-          --exclude "packer" --exclude "script" --exclude ".git" \
-          $PROJECT_ROOT/ $PROJECT_ROOT/environments/current_working_directory/
-else
-    rake environments:update
-fi
-
 
 ## Run Puppet
 puppet apply $PUPPET_DEBUG_ARGS --environment $PUPPET_ENV \
