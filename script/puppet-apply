@@ -37,6 +37,24 @@ if [ -z "$DISABLE_GIT" ]; then
 fi
 
 ## Step 2: Get the Puppet Environments setup
+
+# Environment order (highest wins)
+# * ENV
+# * previously set ENV
+# * production
+CURRENT_ENV=`$PROJECT_ROOT/bin/facter puppet_environment`
+PUPPET_ENV=""
+
+if [ -z "$ENV" ]; then
+    if [ -n "$CURRENT_ENV" ]; then
+        PUPPET_ENV=$CURRENT_ENV
+    else
+        PUPPET_ENV='production'
+    fi
+else
+    PUPPET_ENV=$ENV
+fi
+
 # Setup Puppet environments
 if [ "$PUPPET_ENV" = "current_working_directory" ]; then
     # Make sure the current working directory is an environment too!
@@ -49,34 +67,21 @@ if [ "$PUPPET_ENV" = "current_working_directory" ]; then
           $PROJECT_ROOT/ $PROJECT_ROOT/environments/current_working_directory/
 else
     rake environments:update
-fi
 
-## Attempt to detect if the environment even exists... if not,
-## roll back to the production environment.
-### Make sure our environment conforms to Puppet environment naming
-PUPPET_ENV=$(echo $PUPPET_ENV | sed 's/[-\/]/_/g')
-if [ ! -d $PROJECT_ROOT/environments/$PUPPET_ENV ]; then
-    echo "The environment $PUPPET_ENV does not exist... falling back to production"
-    PUPPET_ENV='production'
-fi
+    ## Set the environment. This should be done *after* librarian-puppet
+    ## has done its thing to determine if it is needed to switch back
+    ## to production if the branch has been deleted.
+    ##
+    ## `puppet_environment` is set in Class[puppet::masterless]
 
-
-# Set the environment. This should be done *after* librarian-puppet
-## has done its thing to determine if it is needed to switch back
-## to production if the branch has been deleted.
-##
-## `puppet_environment` is set in Class[puppet::masterless]
-CURRENT_ENV=`$PROJECT_ROOT/bin/facter puppet_environment`
-PUPPET_ENV=""
-
-if [ -z "$ENV" ]; then
-    if [ -n "$CURRENT_ENV" ]; then
-        PUPPET_ENV=$CURRENT_ENV
-    else
+    ## Attempt to detect if the environment even exists... if not,
+    ## roll back to the production environment.
+    ### Make sure our environment conforms to Puppet environment naming
+    PUPPET_ENV=$(echo $PUPPET_ENV | sed 's/[-\/]/_/g')
+    if [ ! -d $PROJECT_ROOT/environments/$PUPPET_ENV ]; then
+        echo "The environment $PUPPET_ENV does not exist... falling back to production"
         PUPPET_ENV='production'
     fi
-else
-    PUPPET_ENV=$ENV
 fi
 
 ## Run Puppet
