@@ -33,7 +33,15 @@ if [ ! -d /etc/facter/facts.d ]; then
 fi
 
 if [ -n "$CI" ]; then
+  # The st2express_ci role is identical in nature in that
+  # it inherits 100% the st2express role. It only differs
+  # so that we can set CI specific environment variables
+  # to run tests properly.
+  #
+  # ENV is also exported to cut down on the build time
+  # by using only what is cloned.
   ROLE=st2express_ci
+  export ENV="current_working_directory"
 fi
 
 echo "role=${ROLE}" > /etc/facter/facts.d/role.txt
