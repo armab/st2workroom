@@ -1,0 +1,7 @@
+---
+classes:
+  - 'role::st2express_ci'
+
+npm::proxy: false
+puppet::masterless::cron: disable
+st2::disable_admin_cli_credentials: true
